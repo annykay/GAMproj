@@ -1,8 +1,14 @@
-source('./Scripts/dependences.r')
-source('./Scripts/dataTransform.r')
-source('./Scripts/plotFunc.r')
+# 'exclude' column in final dataset:
+# 0 - don't eclude
+# 1 - exclude for sure
+# 2 - exclude in the end to 
+# 3 - duplicates from time adding
 
-data <- read_excel('./SourceData/Erlotinib_dataset.xlsx')
+source('Scripts/dependences.r')
+source('Scripts/dataTransform.r')
+source('Scripts/plotFunc.r')
+
+data <- read_excel('SourceData/Erlotinib_dataset.xlsx')
 data <- dfFactorize(data, c('SMKSTAT', 'WHOSTATN',  'EGFRMUTN'))
 data <- dfOut(data)
 
@@ -23,7 +29,7 @@ for (i in c(1:rows)) {
     }
 }
 
-print(sum(is.na(data2$AST) & is.na(data2$CREAT) & is.na(data2$NLR) & is.na(data2$LDH)))
+
 data2$exclude[is.na(data2$AST) & is.na(data2$CREAT) & is.na(data2$NLR) & is.na(data2$LDH)] <- 3
 
 set.seed(42)

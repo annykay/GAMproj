@@ -3,7 +3,7 @@ make_df <- function(data, mark) {
   df <- data[data$YTYPE_DESC == mark, c('USUBJID', 'SMKSTAT', 'TIME', 'WHOSTATN', 'YTYPE_DESC', 'DV',
                                           'EGFRMUTN', base, 'exclude')]
   df[, 'y'] <- df[,'DV'] - df[, base]
-  df[, 'logy'] <- log(1 + df[, 'DV']) - log(df[, base])
+  df[, 'logy'] <- log(1 + df[, 'DV']) - log(1 + df[, base])
   df[, 'logDV'] <- log(1 + df[, 'DV'])
   for (j in unlist(unique(df$USUBJID))) {
     curr_vec <- apply(df[df$USUBJID == j, 'y'], 2, as.numeric)
@@ -13,8 +13,8 @@ make_df <- function(data, mark) {
 }
 
 dfFactorize <- function(data, factors) {
-  for (factor in factors){
-    data[, factor] <- apply(data[,factor], 2, as.factor)
+  for (factor in factors) {
+    data[, factor] <- apply(data[, factor], 2, as.factor)
   }
   return(data)
 }
@@ -31,21 +31,11 @@ dfOut <- function(data) {
   data$exclude[data$USUBJID == '2KL2236V79' & data$TIME > time_lim] <- 2
 
   data$exclude[data$USUBJID == 'GHKU91P6DO' & data$TIME > 100] <- 2
+  
   i1 <- table(data$USUBJID[data$YTYPE_DESC == 'SLD'])
   i1 <- rownames(i1)[i1 < 2]
-  print(length(i1))
-  for (i in i1) {
-    min_time <- min(data$TIME[data$USUBJID == i])
-    data$exclude[data$USUBJID == i & data$TIME > min_time] <- 1
-  }
-
-  #markers <- sort(unique(data$YTYPE_DESC))
-  #for (i in markers) {
-  #  base <- paste0(i, 'b')
-  #  print(sum(!(data$USUBJID %in% i1)))
-  #  data$exclude[data$USUBJID %in% i1 & data$YTYPE_DESC == i &
-  #    (data$DV != data[, base] | data$TIME > 7) ] <- 1
-  #}
+  data$exclude[data$USUBJID %in% i1] <- 1
+  
   return(data)
 }
 
@@ -67,6 +57,7 @@ dfNormalize <- function(data) {
   }
   return(data1)
 }
+
 chooseTransform <- function(data, Ytrans, Xtranses, markers) {
   data$target <- 0
   data$target[data$YTYPE_DESC == 'SLD'] <- unlist(data[data$YTYPE_DESC == 'SLD', Ytrans])
@@ -75,4 +66,22 @@ chooseTransform <- function(data, Ytrans, Xtranses, markers) {
     data$target[data$YTYPE_DESC == markers[i]] <- unlist(data[data$YTYPE_DESC == markers[i], Xtranses[i]])
   }
   return(data)
+ }
+ 
+get_times <- function(data, time_lim){
+   times <- data.frame(times = colnames(t(sort(table(data$TIME), decreasing = T))))
+   
+   times$times <- apply(times, 1, as.numeric)
+   timepoints <- c(times$times[1])
+   for (i in times$times) { 
+     last <- length(timepoints)
+     if ((i - 3)> timepoints[last] && i < time_lim) {
+       timepoints <- c(timepoints, i)
+     }
+   }
+   differences <- c()
+   len <- length(timepoints)
+   for (i in c(1:(len-1)))
+     differences <- c(differences, (timepoints[i + 1] + timepoints[i]) / 2)
+   return(differences)
  }
