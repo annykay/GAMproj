@@ -1,4 +1,3 @@
-
 plotMarkers <- function(data, title_end, filename_end, dirname, strat='') {
     descriptions <- sort(unique(data$YTYPE_DESC))
     for (i in c(1:9)) {

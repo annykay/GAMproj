@@ -7,6 +7,7 @@
 source('Scripts/dependences.r')
 source('Scripts/dataTransform.r')
 source('Scripts/plotFunc.r')
+source('Scripts/statistics.r')
 
 data <- read_excel('SourceData/Erlotinib_dataset.xlsx')
 data <- dfFactorize(data, c('SMKSTAT', 'WHOSTATN',  'EGFRMUTN'))
@@ -14,7 +15,7 @@ data <- dfOut(data)
 
 data1 <- dfNormalize(data)
 markers <- sort(unique(data1$YTYPE_DESC))[-8]
-data1 <- chooseTransform(data1, 'norm', rep('norm', length(markers)), markers)
+data1 <- chooseTransform(data1, 'DV', rep('norm', length(markers)), markers)
 
 statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 3)), ], markers)
 write_xlsx(statistic, './DerivedData/MarkerStat.xlsx', format_headers = TRUE)
@@ -37,16 +38,20 @@ for (i in c(1:rows)) {
 
 
 data2$exclude[is.na(data2$AST) & is.na(data2$CREAT) & is.na(data2$NLR) & is.na(data2$LDH)] <- 3
+data3 <- data2[!(data2$exclude %in% c(1, 3)), ]
+data3$USUBJID <- as.factor(data3$USUBJID)
 
 write_xlsx(data1, 'DerivedData/long.xlsx')
 write_xlsx(data2, 'DerivedData/wide.xlsx')
 
+
 set.seed(42)
-for_strat <- data2[!(data2$exclude %in% c(1,3)), c('USUBJID', 'SMKSTAT', 'WHOSTATN', 'EGFRMUTN')]
+
+for_strat <- data3[, c('USUBJID', 'SMKSTAT', 'WHOSTATN', 'EGFRMUTN')]
 for_strat <- unique(for_strat)
 res <- stratified(for_strat, c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), 0.7, bothSets= T)
-train <- data2[!(data2$exclude %in% c(1,3)) & data2$USUBJID %in% res$SAMP1$USUBJID, ]
-test <- data2[!(data2$exclude %in% c(1,3)) & data2$USUBJID %in% res$SAMP2$USUBJID, ]
+train <- data3[data3$USUBJID %in% res$SAMP1$USUBJID, ]
+test <- data3[data3$USUBJID %in% res$SAMP2$USUBJID, ]
 
 
 #ct1 <- gam(SLD~
