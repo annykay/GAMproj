@@ -85,3 +85,12 @@ get_times <- function(data, time_lim){
      differences <- c(differences, (timepoints[i + 1] + timepoints[i]) / 2)
    return(differences)
  }
+ 
+ baseline <- function(data, marker) {
+  subjects <- unique(data$USUBJID)
+  for (subj in subjects){
+    base <- unique(data$base[data$USUBJID == subj & data$YTYPE_DESC == 'SLD'])
+    data$base[data$USUBJID == subj] <- base
+  }
+  return(data)
+}

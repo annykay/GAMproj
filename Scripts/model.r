@@ -28,10 +28,10 @@ ct1 <- gam(SLD~
               # te(ALT, TIME, bs = 'tp', k = 10) + #
               # te(ALP, TIME, bs = 'tp', k = 10) +
               ti(AST, TIME, bs = 'tp', k = 10) +
-              te(CREAT, TIME, bs = 'tp', k = 10) +
+              ti(CREAT, TIME, bs = 'tp', k = 10) +
               te(LDH, TIME, bs = 'tp', k = 10) +
-              # ti(NLR, TIME, bs = 'tp', k = 10) +
-              ti(NEUT, TIME, bs = 'tp', k = 10) +
+              ti(NLR, TIME, bs = 'tp', k = 10) +
+              # ti(NEUT, TIME, bs = 'tp', k = 10) +
               # te(WBC, TIME, bs = 'tp', k = 10) +
               # s(ALT, bs = 'tp', k = 10) +
               # s(ALP, bs = 'tp', k = 10) +

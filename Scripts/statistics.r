@@ -1,19 +1,20 @@
 basic_biomarker_statistics <- function(data, markers) {
   npoints <- unlist(lapply(markers, count_points, data = data))
   npatients <- unlist(lapply(markers, count_patients, data = data))
-  means <- unlist(lapply(markers, calc_mean, data = data))
+  data_stat <- unique(data[, c('USUBJID', 'YTYPE_DESC', 'base')])
+  means <- unlist(lapply(markers, calc_mean, data = data_stat))
   
-  medians <- unlist(lapply(markers, calc_median, data = data))
-  sds <- unlist(lapply(markers, calc_sd, data = data))
-  mads <- unlist(lapply(markers, calc_mad, data = data))
+  medians <- unlist(lapply(markers, calc_median, data = data_stat))
+  sds <- unlist(lapply(markers, calc_sd, data = data_stat))
+  mads <- unlist(lapply(markers, calc_mad, data = data_stat))
   
-  iqrs <- unlist(lapply(markers, calc_iqr, data = data))
-  q0 <- unlist(lapply(markers, calc_quart, p = 0, data = data))
-  q25 <- unlist(lapply(markers, calc_quart, p = 0.25, data = data))
+  iqrs <- unlist(lapply(markers, calc_iqr, data = data_stat))
+  q0 <- unlist(lapply(markers, calc_quart, p = 0, data = data_stat))
+  q25 <- unlist(lapply(markers, calc_quart, p = 0.25, data = data_stat))
   
-  q50 <- unlist(lapply(markers, calc_quart, p = 0.5, data = data))
-  q75 <- unlist(lapply(markers, calc_quart, p = 0.75, data = data))
-  q100 <- unlist(lapply(markers, calc_quart, p = 1, data = data))
+  q50 <- unlist(lapply(markers, calc_quart, p = 0.5, data = data_stat))
+  q75 <- unlist(lapply(markers, calc_quart, p = 0.75, data = data_stat))
+  q100 <- unlist(lapply(markers, calc_quart, p = 1, data = data_stat))
   
   lower <- means - sds
   upper <- means + sds
@@ -31,28 +32,28 @@ basic_biomarker_statistics <- function(data, markers) {
   return(basic_statistics)
 }
 count_points <- function(marker, data) {
-  return(nrow(data[data$YTYPE_DESC == marker,]))
+  return(nrow(data[data$YTYPE_DESC == marker, ]))
 }
 count_patients <- function(marker, data) {
   return(length(unique(data$USUBJID[data$YTYPE_DESC == marker])))
 }
 calc_mean <- function(marker, data) {
-  return(round(mean(data$DV[data$YTYPE_DESC == marker], na.rm = T), 2))
+  return(round(mean(data$base[data$YTYPE_DESC == marker], na.rm = T), 2))
 }
 calc_median <- function(marker, data) {
-  return(round(median(data$DV[data$YTYPE_DESC == marker], na.rm = T), 2))
+  return(round(median(data$base[data$YTYPE_DESC == marker], na.rm = T), 2))
 }
 calc_sd <- function(marker, data) {
-  return(round(sd(data$DV[data$YTYPE_DESC == marker], na.rm = T), 2))
+  return(round(sd(data$base[data$YTYPE_DESC == marker], na.rm = T), 2))
 }
 calc_mad <- function(marker, data) {
-  return(round(mad(data$DV[data$YTYPE_DESC == marker]), 2))
+  return(round(mad(data$base[data$YTYPE_DESC == marker]), 2))
 }
 calc_iqr <- function(marker, data) {
-  return(round(IQR(data$DV[data$YTYPE_DESC == marker], na.rm = T), 2))
+  return(round(IQR(data$base[data$YTYPE_DESC == marker], na.rm = T), 2))
 }
 calc_quart <- function(marker, data, p) {
-  return(round(quantile(data$DV[data$YTYPE_DESC == marker], p, na.rm = T), 2))
+  return(round(quantile(data$base[data$YTYPE_DESC == marker], p, na.rm = T), 2))
 }
 
 factor_stat <- function(factors, data) {
