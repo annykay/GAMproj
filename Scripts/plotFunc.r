@@ -114,3 +114,27 @@ plot_diff_dist <- function(data){
   p <- ggplot(to_plot, aes(x = Count, y= value, color =variable)) + geom_point() + xlim(0, xmax)
   return(p)
 }
+plot_outlier <- function(data, subj) {
+  markers <- sort(unique(data$YTYPE_DESC))
+
+  new_data <- data[data$USUBJID == subj, ]
+  plots <- lapply(markers, plot_marker, data = new_data)
+  p <- ggarrange(plotlist=plots,
+                 ncol = 3, nrow = 3,
+                 common.legend = T)
+  filename <- paste0('Results/', 'Out', subj, '.png')
+  ggsave(filename, p, device = 'png')
+  return(p)
+}
+
+plot_marker <- function(data, marker) {
+  pl <- ggplot(data = data[data$YTYPE_DESC == marker, ],
+               aes(x = TIME, y = DV, color = USUBJID)) +
+    geom_point() + 
+    geom_line() +
+    xlab('TIME') + 
+    ylab(marker) + 
+    theme_minimal(base_size = 18) + 
+    theme(legend.position="none")
+    return(pl)
+}

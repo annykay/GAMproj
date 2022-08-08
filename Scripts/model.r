@@ -23,7 +23,9 @@
 #            method="REML", family.mgcv = "gaulss")
 
 ct1 <- gam(SLD~
-              s(TIME, k = 15)  +
+              TIME  +
+              base + 
+              NEUT + 
               s(USUBJID, bs = 're', k = 400) +
               # te(ALT, TIME, bs = 'tp', k = 10) + #
               # te(ALP, TIME, bs = 'tp', k = 10) +
@@ -39,9 +41,9 @@ ct1 <- gam(SLD~
               # s(CREAT, bs = 'tp', k = 10) +
               # s(LDH, bs = 'tp', k = 10) +
               # s(NLR, bs = 'tp', k = 10) +
-              s(NEUT, bs = 'tp', k = 10) +
+              # s(NEUT, bs = 'tp', k = 10) +
               # s(WBC, bs = 'tp', k = 10) +
-             SMKSTAT,
+             SMKSTAT + EGFRMUTN,
             data = train, select=TRUE,
             method="REML", family.mgcv = "gaulss")
 # saveRDS(ct1, 'Models/BestNormWoID.rds')

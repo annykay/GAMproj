@@ -19,6 +19,7 @@ data1 <- chooseTransform(data1, 'DV', rep('norm', length(markers)), markers)
 
 write_xlsx(data1, 'DerivedData/long.xlsx')
 
+markers <- sort(unique(data1$YTYPE_DESC))
 statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 3)), ], markers)
 write_xlsx(statistic, './DerivedData/MarkerStat.xlsx', format_headers = TRUE)
 
