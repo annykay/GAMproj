@@ -1,7 +1,8 @@
 packages = c('readxl', 'ggplot2', 'ggpubr',
              'stats', 'reshape2', 'ggrepel',
              'corrplot', 'tidyr', 'splitstackshape',
-              'mgcv', 'writexl', 'gratia')
+             'mgcv', 'writexl', 'gratia',
+             'grid', 'viridis')
 
 package.check <- lapply(
   packages,

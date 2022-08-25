@@ -16,8 +16,8 @@ basic_biomarker_statistics <- function(data, markers) {
   q75 <- unlist(lapply(markers, calc_quart, p = 0.75, data = data_stat))
   q100 <- unlist(lapply(markers, calc_quart, p = 1, data = data_stat))
   
-  lower <- means - sds
-  upper <- means + sds
+  lower <- means - 1.96 * sds / sqrt(npoints)
+  upper <- means + 1.96 * sds / sqrt(npoints)
   
   basic_statistics <- data.frame(Marker = markers, 
                                  Count = npoints,

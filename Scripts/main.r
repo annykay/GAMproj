@@ -17,17 +17,22 @@ data1 <- dfNormalize(data)
 markers <- sort(unique(data1$YTYPE_DESC))[-8]
 data1 <- chooseTransform(data1, 'DV', rep('norm', length(markers)), markers)
 
-write_xlsx(data1, 'DerivedData/long.xlsx')
+# write_xlsx(data1, 'DerivedData/long.xlsx')
 
-markers <- sort(unique(data1$YTYPE_DESC))
-statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 3)), ], markers)
-write_xlsx(statistic, './DerivedData/MarkerStat.xlsx', format_headers = TRUE)
+# markers <- sort(unique(data1$YTYPE_DESC))
+# statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 3)), ], markers)
+# write_xlsx(statistic, './DerivedData/MarkerStat.xlsx', format_headers = TRUE)
 
-factor_stat <- factor_stat(c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), data1[!(data1$exclude %in% c(1, 3)), ])
-write_xlsx(factor_stat, './DerivedData/FactorStat.xlsx', format_headers = TRUE)
+# statistic <- basic_biomarker_statistics(data1, markers)
+# write_xlsx(statistic, './DerivedData/MarkerStatWithOut.xlsx', format_headers = TRUE)
+
+# factor_stat <- factor_stat(c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), data1[!(data1$exclude %in% c(1, 3)), ])
+# write_xlsx(factor_stat, './DerivedData/FactorStat.xlsx', format_headers = TRUE)
 
 data2 <- data1[, c('USUBJID', 'SMKSTAT', 'TIME', 'WHOSTATN',  'EGFRMUTN', 'YTYPE_DESC', 'target', 'exclude', 'base')]
 data2 <- baseline(data2, 'SLD')
+colnames(data2)[which(colnames(data2) == 'base')] <- 'SLDb'
+
 data2 <- spread(data2, key=YTYPE_DESC, value=target)
 
 rows <- nrow(data2)
@@ -45,15 +50,15 @@ data2$exclude[is.na(data2$AST) & is.na(data2$CREAT) & is.na(data2$NLR) & is.na(d
 data3 <- data2[!(data2$exclude %in% c(1, 3)), ]
 data3$USUBJID <- as.factor(data3$USUBJID)
 
-write_xlsx(data2, 'DerivedData/wide.xlsx')
+# write_xlsx(data2, 'DerivedData/wide.xlsx')
 
 set.seed(42)
 
-for_strat <- data3[, c('USUBJID', 'SMKSTAT', 'WHOSTATN', 'EGFRMUTN')]
-for_strat <- unique(for_strat)
-res <- stratified(for_strat, c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), 0.7, bothSets= T)
-train <- data3[data3$USUBJID %in% res$SAMP1$USUBJID, ]
-test <- data3[data3$USUBJID %in% res$SAMP2$USUBJID, ]
+# for_strat <- data3[, c('USUBJID', 'SMKSTAT', 'WHOSTATN', 'EGFRMUTN')]
+# for_strat <- unique(for_strat)
+# res1 <- stratified(for_strat, c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), 0.7, bothSets= T)
+train <- data3[data3$USUBJID %in% res1$SAMP1$USUBJID, ]
+test <- data3[data3$USUBJID %in% res1$SAMP2$USUBJID, ]
 
 #ct1 <- gam(SLD~
            #ti(ALT, TIME, bs = 'tp', k = 10) + #

@@ -24,8 +24,8 @@
 
 ct1 <- gam(SLD~
               TIME  +
-              base + 
-              NEUT + 
+              SLDb + 
+              # NEUT + 
               s(USUBJID, bs = 're', k = 400) +
               # te(ALT, TIME, bs = 'tp', k = 10) + #
               # te(ALP, TIME, bs = 'tp', k = 10) +
@@ -51,3 +51,23 @@ ct1 <- gam(SLD~
 print(k.check(ct1))
 print(anova(ct1))
 print(AIC(ct1))
+# gamsld <- gam(y~s(TIME,  by = WHOSTATN, bs = 'ad', k = 10, id = 1) + 
+#              s(TIME, by = EGFRMUTN, bs = 'ad', k = 10, id = 1) + 
+#              s(TIME, by = SMKSTAT, bs = 'ad', k = 10, id = 1) + 
+#              SMKSTAT + EGFRMUTN + WHOSTATN, data = data1[datq1$exclude != 1 & data1$YTYPE_DESC == 'SLD', ], select=TRUE,
+#            method="REML", family.mgcv = "gauss")
+# gam.check(ct1)
+# plot(ct1, residuals=TRUE, pch=19, ylim = c(-5,5), shade=TRUE, seWithMean=TRUE, scale=0) 
+# 
+#   ct2 <- gam(SLD ~ s(TIME, bs = 'ad', k = 10) +
+#                ti(ALP, TIME, bs = 'tp', k = 10) +
+#                te(AST, TIME, bs = 'cs', k = 10) +
+#                s(LDH, k = 10) +
+#                s(NEUT, k = 10) +
+#               SMKSTAT,
+#             data = train,
+#             select = TRUE,
+#             method = "REML",
+#             family.mgcv = 'gaulss')
+# 
+# 

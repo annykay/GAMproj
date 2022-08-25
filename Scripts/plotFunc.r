@@ -114,27 +114,31 @@ plot_diff_dist <- function(data){
   p <- ggplot(to_plot, aes(x = Count, y= value, color =variable)) + geom_point() + xlim(0, xmax)
   return(p)
 }
-plot_outlier <- function(data, subj) {
+plot_outlier <- function(data, subj, xlm) {
   markers <- sort(unique(data$YTYPE_DESC))
 
-  new_data <- data[data$USUBJID == subj, ]
-  plots <- lapply(markers, plot_marker, data = new_data)
+  new_data <- data[data$USUBJID %in% subj, ]
+  plots <- lapply(markers, plot_marker, data = new_data, xlm = xlm)
   p <- ggarrange(plotlist=plots,
                  ncol = 3, nrow = 3,
                  common.legend = T)
+  a <- annotate_figure(p, left = textGrob("Units", rot = 90, vjust = 1, gp = gpar(cex = 1.3)),
+                       bottom = textGrob("Time, days", gp = gpar(cex = 1.3)))
   filename <- paste0('Results/', 'Out', subj, '.png')
-  ggsave(filename, p, device = 'png')
-  return(p)
+  ggsave(filename, a, device = 'png')
+  return(a)
 }
 
-plot_marker <- function(data, marker) {
+plot_marker <- function(data, marker, xlm) {
   pl <- ggplot(data = data[data$YTYPE_DESC == marker, ],
                aes(x = TIME, y = DV, color = USUBJID)) +
     geom_point() + 
     geom_line() +
-    xlab('TIME') + 
-    ylab(marker) + 
-    theme_minimal(base_size = 18) + 
+    xlab('') + 
+    ylab('') +
+    xlim(0, xlm) +
+    ggtitle(marker) + 
+    theme_minimal(base_size = 14) + 
     theme(legend.position="none")
     return(pl)
 }

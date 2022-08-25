@@ -20,7 +20,7 @@ calc_corr <- function(data, first, second, subjid) {
         df2 <- apply(df2, 2, as.numeric)
 
         if (is.matrix(df2) && nrow(df2) > 2)
-            return (cor(df2[, first], df2[, second], method = 'kendall'))
+            return (cor(df2[, first], df2[, second], method = 'spearman'))
         else
             return (0)
     } else {
