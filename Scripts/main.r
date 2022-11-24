@@ -1,7 +1,7 @@
 # 'exclude' column in final dataset:
 # 0 - don't eclude
 # 1 - exclude for sure
-# 2 - exclude in the end to 
+# 2 - exclude in the end to
 # 3 - duplicates from time adding
 
 source('Scripts/dependences.r')
@@ -54,9 +54,9 @@ data3$USUBJID <- as.factor(data3$USUBJID)
 
 set.seed(42)
 
-# for_strat <- data3[, c('USUBJID', 'SMKSTAT', 'WHOSTATN', 'EGFRMUTN')]
-# for_strat <- unique(for_strat)
-# res1 <- stratified(for_strat, c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), 0.7, bothSets= T)
+for_strat <- data3[, c('USUBJID', 'SMKSTAT', 'WHOSTATN', 'EGFRMUTN')]
+for_strat <- unique(for_strat)
+res1 <- stratified(for_strat, c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), 0.7, bothSets= T)
 train <- data3[data3$USUBJID %in% res1$SAMP1$USUBJID, ]
 test <- data3[data3$USUBJID %in% res1$SAMP2$USUBJID, ]
 
