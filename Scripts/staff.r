@@ -246,3 +246,85 @@ for (i in c(1:10)) {
   r2_train_full_shuffle <- c(r2_test_full_shuffle, r2_train)
   print(i)
 }
+data_r2 <- data.frame(test = r2_test, train = r2_train)
+data_meld <- melt(data_r2)
+
+my_xlab <- paste(levels(data_meld$variable),"\n(N=",table(data_meld$variable),")",sep="")
+
+ggplot(data_meld, aes(x=variable, y=value, fill=variable)) +
+      geom_boxplot(varwidth = TRUE, alpha=0.2)  +theme_minimal() +
+      theme(legend.position="none") +
+      scale_x_discrete(labels=my_xlab) + ylab('r2') + xlab("")
+
+
+
+slope_mut <- rnorm(50, mean = 20, sd = 3)
+slope_norm <- rnorm(50, mean = 2, sd = 3)
+slope <- c(slope_mut, slope_norm)
+
+mut <- rep(1, 50)
+norm <- rep(0, 50)
+mut <-c(mut, norm)
+baseline <- rnorm(100, mean = 2, sd = 1)
+time <- c(0:10)
+data_mut <- slope %*% t(time) + baseline
+
+data_mut <- slope %*% t(time)
+data_mut <- data.frame(data_mut)
+data_mut$USUBLID <- paste0("ID", c(1:100))
+data_mut$mut <- mut
+data_mut_long <- reshape(data_mut, varying  = list(1:10), direction  = 'long')
+synthetic_data <- data_mut_long[, c('USUBLID', 'mut', 'time', 'X1')]
+colnames(synthetic_data) = c('USUBJID', 'MUTATION', 'TIME', 'SLD')
+for_strat <- synthetic_data[, c('USUBJID', 'MUTATION')]
+for_strat <- unique(for_strat)
+
+r2_test_train_shuffle <- c()
+r2_train_train_shuffle <- c()
+
+r2_test_not_shuffle <- c()
+r2_train_not_shuffle <- c()
+
+for (i in c(1:40)) {
+  res1 <- stratified(for_strat, c('MUTATION'), 0.7, bothSets= T)
+  train <- synthetic_data[synthetic_data$USUBJID %in% res1$SAMP1$USUBJID, ]
+  test <- synthetic_data[synthetic_data$USUBJID %in% res1$SAMP2$USUBJID, ]
+  #source('Scripts/model.r')
+  ct_lin <- glmer(SLD ~ TIME|MUTATION, data = train)
+  res <- predict(ct_lin, train)
+  train$SLD_pred <- res
+
+  res <- predict(ct_lin, test)
+  test$SLD_pred <- res
+
+  r2_test <-  1 -  sum((test$SLD_pred - test$SLD) ** 2, na.rm = T) / sum((test$SLD - mean(test$SLD, na.rm = T)) ** 2, na.rm = T)
+  r2_train <- 1 -  sum((train$SLD_pred - train$SLD) ** 2, na.rm = T) / sum((train$SLD - mean(train$SLD, na.rm = T)) ** 2, na.rm = T)
+  r2_test_not_shuffle <- c(r2_test_not_shuffle, r2_test)
+  r2_train_not_shuffle <- c(r2_train_not_shuffle, r2_train)
+
+  train[, 'SLD'] <- sample(unlist(train[, 'SLD']))
+  ct_lin <- glmer(SLD ~ TIME|MUTATION, data = train)
+  res <- predict(ct_lin, train)
+  train$SLD_pred <- res
+
+  res <- predict(ct_lin, test)
+  test$SLD_pred <- res
+
+  r2_test <- 1 -  sum((test$SLD_pred - test$SLD) ** 2, na.rm = T) / sum((test$SLD - mean(test$SLD, na.rm = T)) ** 2, na.rm = T)
+  r2_train <- 1 -  sum((train$SLD_pred - train$SLD) ** 2, na.rm = T) / sum((train$SLD - mean(train$SLD, na.rm = T)) ** 2, na.rm = T)
+  r2_test_train_shuffle <- c(r2_test_train_shuffle, r2_test)
+  r2_train_train_shuffle <- c(r2_train_train_shuffle, r2_train)
+
+  print(i)
+}
+data_r2 <- data.frame(test = r2_test_not_shuffle, train = r2_train_not_shuffle,
+                      test_shuffle = r2_test_train_shuffle, train_shuffle = r2_train_train_shuffle)
+data_meld <- melt(data_r2)
+
+my_xlab <- paste(levels(data_meld$variable),"\n(N=",table(data_meld$variable),")",sep="")
+
+ggplot(data_meld, aes(x=variable, y=value, fill=variable)) +
+  geom_boxplot(varwidth = TRUE, alpha=0.2)  +theme_minimal() +
+  theme(legend.position="none") +
+  scale_x_discrete(labels=my_xlab) + ylab('r2') + xlab("")
+
