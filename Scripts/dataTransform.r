@@ -6,26 +6,33 @@ make_df <- function(data, mark) {
   df[, 'logy'] <- log(1 + df[, 'DV']) - log(1 + df[, base])
   df[, 'logDV'] <- log(1 + df[, 'DV'])
   for (j in unlist(unique(df$USUBJID))) {
-    curr_vec <- apply(df[df$USUBJID == j, 'y'], 2, as.numeric)
-    df[df$USUBJID == j, 'norm'] <- (curr_vec - mean(curr_vec)) / sd(curr_vec)
+    curr_vec <- as.numeric(df$y[df$USUBJID == j])
+    df$norm[df$USUBJID == j] <- (curr_vec - mean(curr_vec)) / sd(curr_vec)
   }
   return(df)
 }
 
 dfFactorize <- function(data, factors) {
   for (factor in factors) {
-    data[, factor] <- apply(data[, factor], 2, as.factor)
+    data[, factor] <- as.factor(data[, factor])
   }
   return(data)
 }
 
 dfOut <- function(data) {
   data$exclude <- 0
-
-  data$exclude[data$USUBJID == 'EZHAD9EVZL'] <- 1
-  data$exclude[data$USUBJID == '6J3DRPZZKH'] <- 2
-  data$exclude[data$USUBJID == 'L5K6B1LQE5'] <- 2
-  data$exclude[data$USUBJID == 'ZESXWGGXVU'] <- 2
+  
+  data$exclude[data$USUBJID == 'ZUP61WOQNN'] <- 2
+  data$exclude[data$USUBJID == '15N1NV7ZXJ'] <- 2
+  data$exclude[data$USUBJID == 'DAMYDEUFTA'] <- 2
+  data$exclude[data$USUBJID == 'KWNCNYVBAA'] <- 2
+  data$exclude[data$USUBJID == '0WJRHUB7FB'] <- 2
+  data$exclude[data$USUBJID == '16E1J5IX1I'] <- 2
+  
+  # data$exclude[data$USUBJID == 'EZHAD9EVZL'] <- 1
+  # data$exclude[data$USUBJID == '6J3DRPZZKH'] <- 2
+  # data$exclude[data$USUBJID == 'L5K6B1LQE5'] <- 2
+  # data$exclude[data$USUBJID == 'ZESXWGGXVU'] <- 2
 
   time_lim <- sort(unique(data$TIME[data$USUBJID == '2KL2236V79']),  decreasing = T)[3]
   data$exclude[data$USUBJID == '2KL2236V79' & data$TIME > time_lim] <- 2
@@ -94,3 +101,4 @@ baseline <- function(data, marker) {
   }
   return(data)
 }
+ 
