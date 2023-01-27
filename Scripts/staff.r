@@ -225,14 +225,17 @@ shuffle <-function(i) {
   return(c(r2_test, r2_train))
 }
 r2_test_train <- lapply(c(1:10), shuffle)
-r2_test_full_shuffle <- c()
-r2_train_full_shuffle <- c()
+r2_test_train_shuffle <- c()
+r2_train_train_shuffle <- c()
+r2_test_not_shuffle <- c()
+r2_train_not_shuffle <- c()
+
 for_strat <- data_perm[, c('USUBJID', 'SMKSTAT', 'WHOSTATN', 'EGFRMUTN')]
 for_strat <- unique(for_strat)
 for (i in c(1:10)) {
   res1 <- stratified(for_strat, c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), 0.7, bothSets= T)
   train <- data_perm[data_perm$USUBJID %in% res1$SAMP1$USUBJID, ]
-  test <- data_perm[data_perm$USUBJID %in% res1$SAMP2$USUBJID, ]
+  test <- data3[data3$USUBJID %in% res1$SAMP2$USUBJID, ]
   source('Scripts/model.r')
   res <- predict(ct1, train)
   train$SLD_pred <- res
@@ -242,13 +245,30 @@ for (i in c(1:10)) {
 
   r2_test <- 1 -  sum((test$SLD_pred - test$SLD) ** 2, na.rm = T) / sum((test$SLD - mean(test$SLD, na.rm = T)) ** 2, na.rm = T)
   r2_train <- 1 -  sum((train$SLD_pred - train$SLD) ** 2, na.rm = T) / sum((train$SLD - mean(train$SLD, na.rm = T)) ** 2, na.rm = T)
-  r2_test_full_shuffle <- c(r2_test_full_shuffle, r2_test)
-  r2_train_full_shuffle <- c(r2_test_full_shuffle, r2_train)
+  r2_test_train_shuffle <- c(r2_test_train_shuffle, r2_test)
+  r2_train_train_shuffle <- c(r2_train_train_shuffle, r2_train)
+  train <- data3[data3$USUBJID %in% res1$SAMP1$USUBJID, ]
+  test <- data3[data3$USUBJID %in% res1$SAMP2$USUBJID, ]
+  source('Scripts/model.r')
+  res <- predict(ct1, train)
+  train$SLD_pred <- res
+  
+  res <- predict(ct1, test)
+  test$SLD_pred <- res
+  
+  r2_test <- 1 -  sum((test$SLD_pred - test$SLD) ** 2, na.rm = T) / sum((test$SLD - mean(test$SLD, na.rm = T)) ** 2, na.rm = T)
+  r2_train <- 1 -  sum((train$SLD_pred - train$SLD) ** 2, na.rm = T) / sum((train$SLD - mean(train$SLD, na.rm = T)) ** 2, na.rm = T)
+  r2_test_not_shuffle <- c(r2_test_not_shuffle, r2_test)
+  r2_train_not_shuffle <- c(r2_train_not_shuffle, r2_train)
+  
   print(i)
 }
-data_r2 <- data.frame(test = r2_test, train = r2_train)
+data_r2 <- data.frame(test = r2_test_not_shuffle, 
+                      train = r2_train_not_shuffle,
+                      test_shuffle = r2_test_train_shuffle,
+                      train_shuffle = r2_train_train_shuffle)
 data_meld <- melt(data_r2)
-
+write.csv('DerivedData/ZODIACR2.csv')
 my_xlab <- paste(levels(data_meld$variable),"\n(N=",table(data_meld$variable),")",sep="")
 
 ggplot(data_meld, aes(x=variable, y=value, fill=variable)) +

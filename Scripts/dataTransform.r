@@ -29,6 +29,11 @@ dfOut <- function(data) {
   data$exclude[data$USUBJID == '0WJRHUB7FB'] <- 2
   data$exclude[data$USUBJID == '16E1J5IX1I'] <- 2
   
+  data$exclude[data$USUBJID == 'ZUP61WOQNN'] <- 2
+  data$exclude[data$USUBJID == '15N1NV7ZXJ'] <- 2
+  data$exclude[data$USUBJID == 'DAMYDEUFTA'] <- 2
+  data$exclude[data$USUBJID == 'KWNCNYVBAA'] <- 2
+  
   # data$exclude[data$USUBJID == 'EZHAD9EVZL'] <- 1
   # data$exclude[data$USUBJID == '6J3DRPZZKH'] <- 2
   # data$exclude[data$USUBJID == 'L5K6B1LQE5'] <- 2
