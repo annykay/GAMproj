@@ -9,25 +9,25 @@ source('Scripts/dataTransform.r')
 source('Scripts/plotFunc.r')
 source('Scripts/statistics.r')
 
-data <- read_excel('SourceData/Erlotinib_dataset.xlsx')
+# data <- read_excel('SourceData/Erlotinib_dataset.xlsx')
 data <- dfFactorize(data, c('SMKSTAT', 'WHOSTATN',  'EGFRMUTN'))
 data <- dfOut(data)
 
 data1 <- dfNormalize(data)
 markers <- sort(unique(data1$YTYPE_DESC))[-8]
-data1 <- chooseTransform(data1, 'y', rep('norm', length(markers)), markers)
+data1 <- chooseTransform(data1, 'DV', rep('norm', length(markers)), markers)
 
 # write_xlsx(data1, 'DerivedData/long.xlsx')
 
-# markers <- sort(unique(data1$YTYPE_DESC))
-# statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 3)), ], markers)
-# write_xlsx(statistic, './DerivedData/MarkerStat.xlsx', format_headers = TRUE)
+markers <- sort(unique(data1$YTYPE_DESC))
+statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 2, 3)), ], markers)
+write_xlsx(statistic, './DerivedData/MarkerStatINTEREST.xlsx', format_headers = TRUE)
 
 statistic <- basic_biomarker_statistics(data1, markers)
-write_xlsx(statistic, './DerivedData/MarkerStatIPASS.xlsx', format_headers = TRUE)
+write_xlsx(statistic, './DerivedData/MarkerStatINTEREST.xlsx', format_headers = TRUE)
 
-factor_stat <- factor_stat(c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), data1[!(data1$exclude %in% c(1, 3)), ])
-write_xlsx(factor_stat, './DerivedData/FactorStatIPASS.xlsx', format_headers = TRUE)
+factor_statistic <- factor_stat(c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), data1[!(data1$exclude %in% c(1, 3)), ])
+write_xlsx(factor_statistic, './DerivedData/FactorStatINTEREST.xlsx', format_headers = TRUE)
 
 data2 <- data1[, c('USUBJID', 'SMKSTAT', 'TIME', 'WHOSTATN',  'EGFRMUTN', 'YTYPE_DESC', 'target', 'exclude', 'base')]
 subjects <- unique(data$USUBJID[!is.na(data$SLD)])
@@ -52,7 +52,7 @@ data2$exclude[is.na(data2$AST) & is.na(data2$CREAT) & is.na(data2$NLR) & is.na(d
 data3 <- data2[!(data2$exclude %in% c(1, 2, 3)), ]
 data3$USUBJID <- as.factor(data3$USUBJID)
 
-# write_xlsx(data2, 'DerivedData/wide.xlsx')
+write_xlsx(data2, 'DerivedData/wideIPASS.xlsx')
 
 set.seed(42)
 

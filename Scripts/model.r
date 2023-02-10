@@ -23,18 +23,18 @@
 #            method="REML", family.mgcv = "gaulss")
 
 ct1 <- gam(SLD~
-              TIME  +
-              SLDb +
+              s(TIME)  +
               # NEUT +
-              s(USUBJID, bs = 're', k = 400) +
-              # te(ALT, TIME, bs = 'tp', k = 10) + #
-              # te(ALP, TIME, bs = 'tp', k = 10) +
-              ti(AST, TIME, bs = 'tp', k = 10) +
-              ti(CREAT, TIME, bs = 'tp', k = 10) +
+              SLDb + 
+              # s(USUBJID, bs = 're', k = 400) +
+              te(ALT, TIME, bs = 'tp', k = 10) + #IPASS #INTEREST
+              te(ALP, TIME, bs = 'tp', k = 10) +#IPASS
+              te(AST, TIME, bs = 'tp', k = 10) + #IPASS #ZODIAC
+              te(CREAT, TIME, bs = 'tp', k = 10) + #ZODIAC
               te(LDH, TIME, bs = 'tp', k = 10) +
-              ti(NLR, TIME, bs = 'tp', k = 10) +
-              # ti(NEUT, TIME, bs = 'tp', k = 10) +
-              # te(WBC, TIME, bs = 'tp', k = 10) +
+              te(NLR, TIME, bs = 'tp', k = 10) +
+              te(NEUT, TIME, bs = 'tp', k = 10) +#IPASS
+              te(WBC, TIME, bs = 'tp', k = 10)+
               # s(ALT, bs = 'tp', k = 10) +
               # s(ALP, bs = 'tp', k = 10) +
               # s(AST, bs = 'tp', k = 10) +
@@ -43,7 +43,7 @@ ct1 <- gam(SLD~
               # s(NLR, bs = 'tp', k = 10) +
               # s(NEUT, bs = 'tp', k = 10) +
               # s(WBC, bs = 'tp', k = 10) +
-            SMKSTAT + EGFRMUTN,
+            SMKSTAT + EGFRMUTN +WHOSTATN,
             data = train, select=TRUE,
             method="REML", family.mgcv = "gaulss")
 # saveRDS(ct1, 'Models/BestNormWoID.rds')

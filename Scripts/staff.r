@@ -263,12 +263,12 @@ for (i in c(1:10)) {
   
   print(i)
 }
-data_r2 <- data.frame(test = r2_test_not_shuffle, 
-                      train = r2_train_not_shuffle,
-                      test_shuffle = r2_test_train_shuffle,
-                      train_shuffle = r2_train_train_shuffle)
+data_r2 <- data.frame(test = r2_test_not_shuffle[c(1:11)], 
+                      train = r2_train_not_shuffle[c(1:11)],
+                      test_shuffle = r2_test_train_shuffle[c(1:11)],
+                      train_shuffle = r2_train_train_shuffle[c(1:11)])
 data_meld <- melt(data_r2)
-write.csv('DerivedData/ZODIACR2.csv')
+write.csv(data_r2, 'DerivedData/IPASSBLR2.csv')
 my_xlab <- paste(levels(data_meld$variable),"\n(N=",table(data_meld$variable),")",sep="")
 
 ggplot(data_meld, aes(x=variable, y=value, fill=variable)) +

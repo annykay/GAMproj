@@ -34,6 +34,12 @@ dfOut <- function(data) {
   data$exclude[data$USUBJID == 'DAMYDEUFTA'] <- 2
   data$exclude[data$USUBJID == 'KWNCNYVBAA'] <- 2
   
+  outlier_INTEREST  <- c("PD0K6XC8", "PN1WOH6B", "PW77GZ6W",
+                         "5JHT7PBQ", "6FKJY09T", "5JHT7PBQ",
+                         "OGIE1LMB", "6KFPDFFW", "P86WLPLU","
+                         PD0K6XC8", "PN1WOH6B", "PW77GZ6W")
+  data$exclude[data$USUBJID %in% outlier_INTEREST] <- 2
+  
   # data$exclude[data$USUBJID == 'EZHAD9EVZL'] <- 1
   # data$exclude[data$USUBJID == '6J3DRPZZKH'] <- 2
   # data$exclude[data$USUBJID == 'L5K6B1LQE5'] <- 2
@@ -72,11 +78,12 @@ dfNormalize <- function(data) {
 
 chooseTransform <- function(data, Ytrans, Xtranses, markers) {
   data$target <- 0
-  data$target[data$YTYPE_DESC == 'SLD'] <- unlist(data[data$YTYPE_DESC == 'SLD', Ytrans])
+  
   len <- length(markers)
   for (i in c(1:len)) {
     data$target[data$YTYPE_DESC == markers[i]] <- unlist(data[data$YTYPE_DESC == markers[i], Xtranses[i]])
   }
+  data$target[data$YTYPE_DESC == 'SLD'] <- unlist(data[data$YTYPE_DESC == 'SLD', Ytrans])
   return(data)
  }
  
