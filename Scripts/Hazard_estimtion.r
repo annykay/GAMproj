@@ -1,5 +1,5 @@
 source('Scripts/dependences.r')
-data_prog <- read.csv('SourceData/progression_subj_164.csv')
+data_prog <- read.csv('SourceData/progression_subj_163.csv')
 ped <- data_prog %>% as_ped(Surv(PRGDTC, PRGEVENT)~., id = 'USUBJID')
 
 data <-read.csv('SourceData/megred_table_JM.csv')
