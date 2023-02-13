@@ -9,58 +9,79 @@ source('Scripts/dataTransform.r')
 source('Scripts/plotFunc.r')
 source('Scripts/statistics.r')
 
-# data <- read_excel('SourceData/Erlotinib_dataset.xlsx')
-data <- dfFactorize(data, c('SMKSTAT', 'WHOSTATN',  'EGFRMUTN'))
-data <- dfOut(data)
+data_all <- read.csv('SourceData/megred_table_JM.csv')
+data_sets <- c()
+studies <- unique(data_all$STUDY)
 
-data1 <- dfNormalize(data)
-markers <- sort(unique(data1$YTYPE_DESC))[-8]
-data1 <- chooseTransform(data1, 'DV', rep('norm', length(markers)), markers)
-
-# write_xlsx(data1, 'DerivedData/long.xlsx')
-
-markers <- sort(unique(data1$YTYPE_DESC))
-statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 2, 3)), ], markers)
-write_xlsx(statistic, './DerivedData/MarkerStatINTEREST.xlsx', format_headers = TRUE)
-
-statistic <- basic_biomarker_statistics(data1, markers)
-write_xlsx(statistic, './DerivedData/MarkerStatINTEREST.xlsx', format_headers = TRUE)
-
-factor_statistic <- factor_stat(c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), data1[!(data1$exclude %in% c(1, 3)), ])
-write_xlsx(factor_statistic, './DerivedData/FactorStatINTEREST.xlsx', format_headers = TRUE)
-
-data2 <- data1[, c('USUBJID', 'SMKSTAT', 'TIME', 'WHOSTATN',  'EGFRMUTN', 'YTYPE_DESC', 'target', 'exclude', 'base')]
-subjects <- unique(data$USUBJID[!is.na(data$SLD)])
-data2 <- data2[data2$USUBJID %in% subjects, ]
-data2 <- baseline(data2, 'SLD')
-colnames(data2)[which(colnames(data2) == 'base')] <- 'SLDb'
-
-data2 <- spread(data2, key=YTYPE_DESC, value=target)
-
-rows <- nrow(data2)
-
-for (i in c(1:rows)) {
+for (i in c(1:4)) {
+  assign('data', data_all[data_all$STUDY == studies[i], ])
+  data <- dfFactorize(data, c('SMKSTAT', 'WHOSTATN',  'EGFRMUTN'))
+  data <- dfOut(data)
+  data1 <- dfNormalize(data)
+  markers <- sort(unique(data1$YTYPE_DESC))[-8]
+  data1 <- chooseTransform(data1, 'DV', rep('DV', length(markers)), markers)
+  
+  filename <- paste0('DerivedData/long', studies[i], '.xlsx')
+  write_xlsx(data1, filename)
+  
+  markers <- sort(unique(data1$YTYPE_DESC))
+  statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 2, 3)), ], markers)
+  filename <- paste0('./DerivedData/MarkerStat', studies[i], '_WO_OUTLIERS.xlsx')
+  write_xlsx(statistic, filename, format_headers = TRUE)
+  
+  statistic <- basic_biomarker_statistics(data1, markers)
+  filename <- paste0('./DerivedData/MarkerStat', studies[i], '.xlsx')
+  write_xlsx(statistic, filename, format_headers = TRUE)
+  
+  
+  factor_statistic <- factor_stat(c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), data1[!(data1$exclude %in% c(1, 3)), ])
+  filename <- paste0('./DerivedData/FactorStat', studies[i], '.xlsx')
+  write_xlsx(factor_statistic, filename, format_headers = TRUE)
+  
+  data2 <- data1[, c('USUBJID', 'SMKSTAT', 'TIME', 'WHOSTATN',  'EGFRMUTN', 'YTYPE_DESC', 'target', 'exclude', 'base')]
+  subjects <- unique(data$USUBJID[!is.na(data$SLD)])
+  data2 <- data2[data2$USUBJID %in% subjects, ]
+  data2 <- baseline(data2, 'SLD')
+  colnames(data2)[which(colnames(data2) == 'base')] <- 'SLDb'
+  
+  data2 <- spread(data2, key=YTYPE_DESC, value=target)
+  
+  rows <- nrow(data2)
+  
+  
+  for (i in c(1:rows)) {
     if (!is.na(data2$SLD[i])) {
-        subj <- data2$USUBJID[i]
-        time <- data2$TIME[i]
-        data2$SLD[data2$USUBJID == subj & abs(data2$TIME - time) < 7 & is.na(data2$SLD)] <- data2$SLD[i]
+      subj <- data2$USUBJID[i]
+      time <- data2$TIME[i]
+      data2$SLD[data2$USUBJID == subj & abs(data2$TIME - time) < 7 & is.na(data2$SLD)] <- data2$SLD[i]
     }
+  }
+  data2$exclude[is.na(data2$AST) & is.na(data2$CREAT) & is.na(data2$NLR) & is.na(data2$LDH)] <- 3
+  data3 <- data2[!(data2$exclude %in% c(1, 2, 3)), ]
+  data3$USUBJID <- as.factor(data3$USUBJID)
+  
+  filename <- paste0('DerivedData/wide', studies[i], '.xlsx')
+  write_xlsx(data2, filename)
+  df_name <- paste0('data2', studies[i])
+  assign(df_name, data2)
+  df_name <- paste0('data3', studies[i])
+  assign(df_name, data3)
+}
+
+for (study in studies) {
+  df_name <- paste0('surv', study)
+  assign(df_name, unique(data_all[data_all$STUDY == studies[1], c('USUBJID', 'EVENT', 'EVENT_TIME')]))
 }
 
 
-data2$exclude[is.na(data2$AST) & is.na(data2$CREAT) & is.na(data2$NLR) & is.na(data2$LDH)] <- 3
-data3 <- data2[!(data2$exclude %in% c(1, 2, 3)), ]
-data3$USUBJID <- as.factor(data3$USUBJID)
 
-write_xlsx(data2, 'DerivedData/wideIPASS.xlsx')
-
-set.seed(42)
-
-for_strat <- data3[, c('USUBJID', 'SMKSTAT', 'WHOSTATN', 'EGFRMUTN')]
-for_strat <- unique(for_strat)
-res1 <- stratified(for_strat, c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), 0.7, bothSets= T)
-train <- data3[data3$USUBJID %in% res1$SAMP1$USUBJID, ]
-test <- data3[data3$USUBJID %in% res1$SAMP2$USUBJID, ]
+# set.seed(42)
+# 
+# for_strat <- data3[, c('USUBJID', 'SMKSTAT', 'WHOSTATN', 'EGFRMUTN')]
+# for_strat <- unique(for_strat)
+# res1 <- stratified(for_strat, c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), 0.7, bothSets= T)
+# train <- data3[data3$USUBJID %in% res1$SAMP1$USUBJID, ]
+# test <- data3[data3$USUBJID %in% res1$SAMP2$USUBJID, ]
 
 #ct1 <- gam(SLD~
            #ti(ALT, TIME, bs = 'tp', k = 10) + #

@@ -61,8 +61,10 @@ dfNormalize <- function(data) {
   for (i in sort(unique(data$YTYPE_DESC))) {
     df_name <- paste0('df', i)
     assign(df_name, make_df(data, i))
+    
   }
-  data1 <- dfALT
+  data1 <- get(df_name)
+  mark <- unique(data1$YTYPE_DESC)[1]
   colnames(data1)[8] <- 'base'
   j <- 1
   for (i in sort(unique(data$YTYPE_DESC))) {
@@ -70,7 +72,7 @@ dfNormalize <- function(data) {
     df <- get(df_name)
     colnames(df)[8] <- 'base'
     j <- j + 1
-    if (i != 'ALT')
+    if (i != mark)
       data1 <- rbind(data1, df)
   }
   return(data1)
