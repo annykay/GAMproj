@@ -13,30 +13,30 @@ data_all <- read.csv('SourceData/megred_table_JM.csv')
 data_sets <- c()
 studies <- unique(data_all$STUDY)
 
-for (i in c(1:4)) {
-  assign('data', data_all[data_all$STUDY == studies[i], ])
+for (study in studies) {
+  assign('data', data_all[data_all$STUDY == study, ])
   data <- dfFactorize(data, c('SMKSTAT', 'WHOSTATN',  'EGFRMUTN'))
   data <- dfOut(data)
   data1 <- dfNormalize(data)
   markers <- sort(unique(data1$YTYPE_DESC))[-8]
   data1 <- chooseTransform(data1, 'DV', rep('DV', length(markers)), markers)
   
-  filename <- paste0('DerivedData/long', studies[i], '.xlsx')
-  write_xlsx(data1, filename)
-  
-  markers <- sort(unique(data1$YTYPE_DESC))
-  statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 2, 3)), ], markers)
-  filename <- paste0('./DerivedData/MarkerStat', studies[i], '_WO_OUTLIERS.xlsx')
-  write_xlsx(statistic, filename, format_headers = TRUE)
-  
-  statistic <- basic_biomarker_statistics(data1, markers)
-  filename <- paste0('./DerivedData/MarkerStat', studies[i], '.xlsx')
-  write_xlsx(statistic, filename, format_headers = TRUE)
-  
-  
-  factor_statistic <- factor_stat(c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), data1[!(data1$exclude %in% c(1, 3)), ])
-  filename <- paste0('./DerivedData/FactorStat', studies[i], '.xlsx')
-  write_xlsx(factor_statistic, filename, format_headers = TRUE)
+  # filename <- paste0('DerivedData/long', study, '.xlsx')
+  # write_xlsx(data1, filename)
+  # 
+  # markers <- sort(unique(data1$YTYPE_DESC))
+  # statistic <- basic_biomarker_statistics(data1[!(data1$exclude %in% c(1, 2, 3)), ], markers)
+  # filename <- paste0('./DerivedData/MarkerStat', study, '_WO_OUTLIERS.xlsx')
+  # write_xlsx(statistic, filename, format_headers = TRUE)
+  # 
+  # statistic <- basic_biomarker_statistics(data1, markers)
+  # filename <- paste0('./DerivedData/MarkerStat', study, '.xlsx')
+  # write_xlsx(statistic, filename, format_headers = TRUE)
+  # 
+  # 
+  # factor_statistic <- factor_stat(c('SMKSTAT', 'WHOSTATN', 'EGFRMUTN'), data1[!(data1$exclude %in% c(1, 3)), ])
+  # filename <- paste0('./DerivedData/FactorStat', study, '.xlsx')
+  # write_xlsx(factor_statistic, filename, format_headers = TRUE)
   
   data2 <- data1[, c('USUBJID', 'SMKSTAT', 'TIME', 'WHOSTATN',  'EGFRMUTN', 'YTYPE_DESC', 'target', 'exclude', 'base')]
   subjects <- unique(data$USUBJID[!is.na(data$SLD)])
@@ -53,24 +53,24 @@ for (i in c(1:4)) {
     if (!is.na(data2$SLD[i])) {
       subj <- data2$USUBJID[i]
       time <- data2$TIME[i]
-      data2$SLD[data2$USUBJID == subj & abs(data2$TIME - time) < 7 & is.na(data2$SLD)] <- data2$SLD[i]
+      data2$SLD[data2$USUBJID == subj & abs(data2$TIME - time) < 4 & is.na(data2$SLD)] <- data2$SLD[i]
     }
   }
   data2$exclude[is.na(data2$AST) & is.na(data2$CREAT) & is.na(data2$NLR) & is.na(data2$LDH)] <- 3
   data3 <- data2[!(data2$exclude %in% c(1, 2, 3)), ]
   data3$USUBJID <- as.factor(data3$USUBJID)
   
-  filename <- paste0('DerivedData/wide', studies[i], '.xlsx')
+  filename <- paste0('DerivedData/wide', study, '.xlsx')
   write_xlsx(data2, filename)
-  df_name <- paste0('data2', studies[i])
+  df_name <- paste0('data2', study)
   assign(df_name, data2)
-  df_name <- paste0('data3', studies[i])
+  df_name <- paste0('data3', study)
   assign(df_name, data3)
 }
 
 for (study in studies) {
   df_name <- paste0('surv', study)
-  assign(df_name, unique(data_all[data_all$STUDY == studies[1], c('USUBJID', 'EVENT', 'EVENT_TIME')]))
+  assign(df_name, unique(data_all[data_all$STUDY == study, c('USUBJID', 'EVENT', 'EVENT_TIME', 'SLDb', 'WHOSTATN', 'EGFRMUTN', 'SMKSTAT')]))
 }
 
 

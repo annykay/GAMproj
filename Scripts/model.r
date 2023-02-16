@@ -47,7 +47,7 @@ ct1 <- gam(SLD~
             data = train, select=TRUE,
             method="REML", family.mgcv = "gaulss")
 # saveRDS(ct1, 'Models/BestNormWoID.rds')
-# saveRDS(ct1, 'Models/curr.rds')
+saveRDS(pam, 'Models/IPASS_PAMM.rds')
 #print(k.check(ct1))
 #print(anova(ct1))
 #print(AIC(ct1))

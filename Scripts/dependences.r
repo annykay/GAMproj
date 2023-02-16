@@ -2,7 +2,8 @@ packages = c('readxl', 'ggplot2', 'ggpubr',
              'stats', 'reshape2', 'ggrepel',
              'corrplot', 'tidyr', 'splitstackshape',
              'mgcv', 'writexl', 'gratia',
-             'grid', 'viridis')
+             'grid', 'viridis', 'pammtools',
+             'pec')
 
 package.check <- lapply(
   packages,
