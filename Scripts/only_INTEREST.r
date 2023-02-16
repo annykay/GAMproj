@@ -112,6 +112,10 @@ pam2 <- pamm(
 merged <- merge(surv, biom, by = c('USUBJID', 'SMKSTAT', 'WHOSTATN', 
                                    'EGFRMUTN', 'SLDb'), all =  F)
 colnames(merged)[1] <- 'id'
+merged$SLD <- na.locf(na.locf(merged$SLD),fromLast=TRUE)
+merged$WBC <- na.locf(na.locf(merged$WBC),fromLast=TRUE)
+# merged <- merged[!is.na(merged$SLD), ]
+# merged <- merged[!is.na(merged$WBC), ]
 pec <- pec(
   list(pam1 = pam1, pam2 = pam2),
   Surv(EVENT_TIME, EVENT) ~ 1, # formula for IPCW
