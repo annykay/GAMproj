@@ -127,9 +127,10 @@ for (i in c(1:nrow(ped_data1upd))) {
     ped_data1upd$CREAT[i] <- ped_data1upd$CREATav[i]
   }
 }
-pam_strata1 <- gam(ped_status ~ s(tend) + WHOSTATN + SMKSTAT + s(ALP) + s(SLD) + s(ALT),
+pam_strata1 <- gam(ped_status ~ s(tend) + WHOSTATN + SMKSTAT + ALP + SLD + ALT + s(CREAT),
                    data = ped_data1upd,
-                   family = poisson(), offset = offset)
+                   family = poisson(), offset = offset, 
+                   method = 'REML')
 
 summary(pam_strata1)
 AIC(pam_strata1)
@@ -208,18 +209,76 @@ survF_plot <- SurvFunc_strat_plot(ped_data=ped_data1upd, pam_model=pam_strata1, 
                                    timecat =500, prob_range= c(0.10, 0.90), legend_title = 'Max CREAT level',legend_names= c('< population average', '> population average' ))
 ggsave(survF_plot, file =  "Results/survf_predDistr_CREATmax.png", width =5, height = 4)
 ##############################
-n_train   <- 150
+n_train   <- 300
 train_idx <- sample(data1_tte$USUBJID, n_train)
+# train_ped <- ped_data1upd[ped_data1upd$USUBJID %in% train_idx, ]
+# test_ped <- ped_data1upd[!(ped_data1upd$USUBJID %in% train_idx), ]
 train_ped <- as_ped(
   data    = list(data1_tte[data1_tte$USUBJID %in% train_idx, ], data1hr[data1hr$USUBJID %in% train_idx, ]),
   formula = Surv(EVENT_TIME, EVENT) ~ . + concurrent(SLD, CREAT, ALP, ALT, tz_var = "TIME"),
-  id      = "USUBJID")
-pam1 <- pamm(
-  formula = ped_status~s(tend) + WHOSTATN + SMKSTAT + ALP + ALT + SLD + s(CREAT),
-  data = train_ped)
-pam2 <- pamm(
-  formula = ped_status ~ s(tend) + SMKSTAT + WHOSTATN,
-  data = train_ped)
+  id      = "USUBJID",
+  cut = seq(0, 1000, 200))
+test_ped <- as_ped(
+  data    = list(data1_tte[!(data1_tte$USUBJID %in% train_idx), ], data1hr[!(data1hr$USUBJID %in% train_idx), ]),
+  formula = Surv(EVENT_TIME, EVENT) ~ . + concurrent(SLD, CREAT, ALP, ALT, tz_var = "TIME"),
+  id      = "USUBJID",
+  cut = seq(0, 1000, 200))
+# pam1 <- gam(
+#   formula = ped_status~s(tend) + WHOSTATN + SMKSTAT + ALP + ALT + SLD + s(CREAT),
+#   data = train_ped)
+# pam2 <- pamm(
+#   formula = ped_status ~ s(tend) + SMKSTAT + WHOSTATN,
+#   data = train_ped)
+pam1 <- gam(ped_status ~ s(tend) + SMKSTAT + WHOSTATN,
+                   data = train_ped,
+                   family = poisson(), offset = offset, 
+                   method = 'REML')
+pam2 <- gam(ped_status ~ s(tend) + WHOSTATN + SMKSTAT + ALP + ALT + SLD + s(CREAT),
+                   data = train_ped,
+                   family = poisson(), offset = offset, 
+                   method = 'REML')
+test_ped$intlen <- test_ped$tend - test_ped$tstart
+# time_points <- test_ped$tend[test_ped$ped_status == 1]
+time_point <- 200
+test_ped <- test_ped %>% add_hazard(pam1, overwrite = T)
+test_ped_timepoint <- test_ped[test_ped$tend < time_point,]
+for_auc <-  test_ped_timepoint
+for_auc$predicts <- for_auc$hazard
+for_auc$status <- for_auc$ped_status
+
+# for_auc <- test_ped_timepoint %>% 
+#   group_by(USUBJID) %>% 
+#   summarize(status = sum(ped_status), 
+#             predicts = max(hazard))
+roc_curve <- roc(for_auc$status, for_auc$predicts, auc.polygon=TRUE)
+
+
+test_ped <- test_ped %>% add_hazard(pam2, overwrite = T)
+test_ped_timepoint <-  test_ped[test_ped$tend < time_point,]
+for_auc <-  test_ped_timepoint
+for_auc$predicts <- for_auc$hazard
+for_auc$status <- for_auc$ped_status
+
+# for_auc <- test_ped_timepoint %>%
+#   group_by(USUBJID) %>%
+#   summarize(status = sum(ped_status),
+#             predicts = max(hazard, na.rm = T))
+roc_curve1 <- roc(for_auc$status, for_auc$predicts, auc.polygon=TRUE)
+plot(roc_curve)
+plot(roc_curve1)
+for_plotting <- data.frame(Model = 'Base Model',
+                           Sensitivity = roc_curve[["sensitivities"]], 
+                           Specificity = roc_curve[["specificities"]])
+for_plotting1 <- data.frame(Model = 'Best Model',
+                           Sensitivity = roc_curve1[["sensitivities"]], 
+                           Specificity = roc_curve1[["specificities"]])
+for_plotting <- rbind(for_plotting, for_plotting1)
+for_plotting1 <- data.frame(Model = 'Random Classifier',
+                            Sensitivity = c(1, 0), 
+                            Specificity = c(0, 1))
+for_plotting <- rbind(for_plotting, for_plotting1)
+ggplot(aes(x=Specificity, y = Sensitivity, color = Model), data = for_plotting) + geom_line()
+ggsave('Results/ROC_all.png')
 merged <- merge(data1_tte[, c(1:9)], data1hr, by = c('USUBJID', 'LINE', 'STUDY'), all =  F)
 merged <- merge(merged, BM_by_id, by = 'USUBJID')
 
@@ -262,6 +321,10 @@ unique_measurments <- ped_data1upd %>% group_by(USUBJID) %>% summarize(SLDuni = 
                                               SMKSTAT = unique(SMKSTAT), 
                                               WHOSTATN = unique(WHOSTATN))
 patients_sld <- unique_measurments$USUBJID[unique_measurments$SLDuni > 6]
+patients_sld <- c("S7U52DXE")
+ped_data1upd$WHOSTATN <- as.numeric(ped_data1upd$WHOSTATN)
+ped_data1upd$SMKSTAT <- as.numeric(ped_data1upd$SMKSTAT)
+ped_data1upd <- ped_data1upd %>% add_hazard(pam2, overwrite = T)
 for (SLD_SUBj in patients_sld) {
 plotting_ped <- ped_data1upd[ped_data1upd == SLD_SUBj, ]
 melted <- melt(plotting_ped[, c('USUBJID', 'tend', 'SLD', 'hazard')], id = c('USUBJID', 'tend'))
@@ -273,9 +336,9 @@ SLDcolor <- '#00BFC4'
 
 ggplot(plotting_ped, aes(x=tend)) +
   
-  geom_smooth( aes(y=hazard / coeff, color=Hazardcolor)) + 
-  geom_smooth( aes(y=SLD, color=SLDcolor)) + # Divide by 10 to get the same range than the temperature
-  
+  geom_line( aes(y=hazard / coeff, color=SLDcolor)) + 
+  geom_line( aes(y=SLD, color=Hazardcolor), size = 1.5) + # Divide by 10 to get the same range than the temperature
+  geom_ribbon(aes(ymin=ci_lower/ coeff, ymax=ci_upper/ coeff, fill= SLDcolor), alpha = 0.15) + 
   scale_y_continuous(
     
     # Features of the first axis
@@ -287,8 +350,8 @@ ggplot(plotting_ped, aes(x=tend)) +
     theme_minimal() +
     xlab('Time') +
     theme(
-        axis.title.y = element_text(color = Hazardcolor, size=16),
-        axis.title.y.right = element_text(color = SLDcolor, size=16),
+        axis.title.y = element_text(color = SLDcolor, size=16),
+        axis.title.y.right = element_text(color = Hazardcolor, size=16),
         title = element_text(size = 18)
     ) +
     theme(legend.position = "none")
@@ -309,9 +372,9 @@ for (ALT_SUBj in patients_alt) {
   
   ggplot(plotting_ped, aes(x=tend)) +
     
-    geom_smooth( aes(y=hazard / coeff, color=Hazardcolor)) + 
-    geom_smooth( aes(y=ALT, color=SLDcolor)) + # Divide by 10 to get the same range than the temperature
-    
+    geom_line( aes(y=hazard / coeff, color=SLDcolor )) + 
+    geom_line( aes(y=ALT, color=Hazardcolor), size = 1.5) + # Divide by 10 to get the same range than the temperature
+    geom_ribbon(aes(ymin=ci_lower/ coeff, ymax=ci_upper/ coeff, fill= SLDcolor), alpha = 0.15) + 
     scale_y_continuous(
       
       # Features of the first axis
@@ -323,8 +386,8 @@ for (ALT_SUBj in patients_alt) {
     theme_minimal() +
     xlab('Time') +
     theme(
-      axis.title.y = element_text(color = Hazardcolor, size=16),
-      axis.title.y.right = element_text(color = SLDcolor, size=16),
+      axis.title.y = element_text(color = SLDcolor, size=16),
+      axis.title.y.right = element_text(color = Hazardcolor , size=16),
       title = element_text(size = 18)
     ) +
     theme(legend.position = "none")
@@ -344,9 +407,9 @@ for (ALP_SUBj in patients_alp) {
   
   ggplot(plotting_ped, aes(x=tend)) +
     
-    geom_smooth( aes(y=hazard / coeff, color=Hazardcolor)) + 
-    geom_smooth( aes(y=ALP, color=SLDcolor)) + # Divide by 10 to get the same range than the temperature
-    
+    geom_line( aes(y=hazard / coeff, color=SLDcolor)) + 
+    geom_line( aes(y=ALP, color=Hazardcolor), size = 1.5) + # Divide by 10 to get the same range than the temperature
+    geom_ribbon(aes(ymin=ci_lower/ coeff, ymax=ci_upper/ coeff, fill= SLDcolor), alpha = 0.15) + 
     scale_y_continuous(
       
       # Features of the first axis
@@ -358,8 +421,8 @@ for (ALP_SUBj in patients_alp) {
     theme_minimal() +
     xlab('Time') +
     theme(
-      axis.title.y = element_text(color = Hazardcolor, size=16),
-      axis.title.y.right = element_text(color = SLDcolor, size=16),
+      axis.title.y = element_text(color = SLDcolor, size=16),
+      axis.title.y.right = element_text(color = Hazardcolor, size=16),
       title = element_text(size = 18)
     ) +
     theme(legend.position = "none")
@@ -378,9 +441,9 @@ for (CREAT_SUBj in patients_creat) {
   
   ggplot(plotting_ped, aes(x=tend)) +
     
-    geom_smooth( aes(y=hazard / coeff, color=Hazardcolor)) + 
-    geom_smooth( aes(y=CREAT, color=SLDcolor)) + # Divide by 10 to get the same range than the temperature
-    
+    geom_line( aes(y=hazard / coeff, color=SLDcolor)) + 
+    geom_line( aes(y=CREAT, color=Hazardcolor ), size = 1.5) + # Divide by 10 to get the same range than the temperature
+    geom_ribbon(aes(ymin=ci_lower/ coeff, ymax=ci_upper/ coeff, fill= SLDcolor), alpha = 0.15) + 
     scale_y_continuous(
       
       # Features of the first axis
@@ -392,8 +455,8 @@ for (CREAT_SUBj in patients_creat) {
     theme_minimal() +
     xlab('Time') +
     theme(
-      axis.title.y = element_text(color = Hazardcolor, size=16),
-      axis.title.y.right = element_text(color = SLDcolor, size=16),
+      axis.title.y = element_text(color = SLDcolor, size=16),
+      axis.title.y.right = element_text(color = Hazardcolor , size=16),
       title = element_text(size = 18)
     ) +
     theme(legend.position = "none")
@@ -411,7 +474,8 @@ for (SMK0_SUBj in patints_smk_0){
       plotting_ped <- ped_data1upd[ped_data1upd$USUBJID %in% c(SMK0_SUBj, SMK1_SUBj, SMK2_SUBj), ]
       plotting_ped$SMKSTAT <- as.factor(plotting_ped$SMKSTAT)
       ggplot(plotting_ped, aes(x=tend)) +
-        geom_smooth( aes(y=hazard, color=SMKSTAT)) +
+        geom_line( aes(y=hazard, color=SMKSTAT)) +
+        geom_ribbon(aes(ymin=ci_lower, ymax=ci_upper, fill= SMKSTAT), alpha = 0.15) +
         theme_minimal() +
         xlab('Time') +
         ylab('Hazard') + 
@@ -419,7 +483,8 @@ for (SMK0_SUBj in patints_smk_0){
           axis.title.y = element_text(size=16),
           axis.title.y.right = element_text(size=16),
           title = element_text(size = 18)
-        ) + scale_color_discrete(name = 'Smoking Status', labels =  c('Never Smoker', 'Former Smoker', 'Habital Smoker'))
+        ) + scale_color_discrete(name = 'Smoking Status', labels =  c('Never Smoker', 'Former Smoker', 'Habital Smoker'))+
+        scale_fill_discrete(guide="none")
       filename <- paste0('Results/SMKSTAT_Hazard_pictures/SMKSTAT_', SMK0_SUBj, SMK1_SUBj, SMK2_SUBj, '.png')
       ggsave(filename)
     }
@@ -434,9 +499,10 @@ for (WHO0_SUBj in patints_who_0){
   for (WHO1_SUBj in patints_who_1) {
     for (WHO2_SUBj in patints_who_2) {
       plotting_ped <- ped_data1upd[ped_data1upd$USUBJID %in% c(WHO0_SUBj, WHO1_SUBj, WHO2_SUBj), ]
-      plotting_ped$WHOSTATN <- as.factor(plotting_ped$WHOSTATN)
+      plotting_ped$WHOSTATN <- as.factor(plotting_ped$WHOSTATN) 
       ggplot(plotting_ped, aes(x=tend)) +
-        geom_smooth( aes(y=hazard, color=WHOSTATN)) +
+        geom_line(aes(y=hazard, color=WHOSTATN)) +
+        geom_ribbon(aes(ymin=ci_lower, ymax=ci_upper, fill= WHOSTATN), alpha = 0.15) +
         theme_minimal() +
         xlab('Time') +
         ylab('Hazard') + 
@@ -444,7 +510,8 @@ for (WHO0_SUBj in patints_who_0){
           axis.title.y = element_text(size=16),
           axis.title.y.right = element_text(size=16),
           title = element_text(size = 18)
-        ) + scale_color_discrete(name = 'Performance Status')
+        ) + scale_color_discrete(name = 'Performance Status') +
+        scale_fill_discrete(guide="none")
       filename <- paste0('Results/WHOSTAT_Hazard_pictures/WHOSTAT_', WHO0_SUBj, WHO1_SUBj, WHO2_SUBj, '.png')
       ggsave(filename)
     }
