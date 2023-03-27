@@ -1,11 +1,6 @@
-library(ggplot2)
+setwd('D:/study/MSD/GAMproj/')
+source('Scripts/dependences.r')
 theme_set(theme_bw())
-library(dplyr)
-library(zoo)
-library(survival)
-library(mgcv)
-library(purrr)
-library(pammtools)
 Set1 <- RColorBrewer::brewer.pal(9, "Set1")
 
 
@@ -58,9 +53,9 @@ for (i in c(1:(nrow(data1hr) - 1))) {
   if (is.na(data1hr$CREAT[i+1]) & (data1hr$USUBJID[i] == data1hr$USUBJID[i+1])) {
     data1hr$CREAT[i+1] <- data1hr$CREAT[i]
   }
-  # if (is.na(data1hr$NEUT[i+1]) & (data1hr$USUBJID[i] == data1hr$USUBJID[i+1])) {
-  #   data1hr$NEUT[i+1] <- data1hr$NEUT[i]
-  # }
+  if (is.na(data1hr$NEUT[i+1]) & (data1hr$USUBJID[i] == data1hr$USUBJID[i+1])) {
+     data1hr$NEUT[i+1] <- data1hr$NEUT[i]
+  }
   if (is.na(data1hr$WBC[i+1]) & (data1hr$USUBJID[i] == data1hr$USUBJID[i+1])) {
     data1hr$WBC[i+1] <- data1hr$WBC[i]
   }
@@ -69,33 +64,18 @@ BM_by_id <-  data1hr %>% group_by(USUBJID) %>%
   summarise( SLDav = mean(SLD, na.rm = T), ALPav = mean(ALP, na.rm = T), 
              CREATav = mean(CREAT, na.rm = T), ALPmax =max(ALP, na.rm = T), 
              CREATmax = max(CREAT, na.rm = T), ASTav = mean(AST, na.rm = T),
-             ALTav = mean(ALT, na.rm = T))
+             ALTav = mean(ALT, na.rm = T), NEUTav = mean(NEUT, na.rm = T))
 
 #### combine TTE and TDC data
 data1_tte <-  data1[!duplicated(data1$USUBJID),c(1:5,9:11,18)]
-data1_tte$SLD <- 0
-data1_tte$WBC <- 0
-#data1_tte$NEUT <- 0
-data1_tte$CREAT <- 0
-data1_tte$ALP <- 0
-data1_tte$ALT <- 0
-data1_tte$AST <- 0
-head(data1_tte)
 
 ped_data1 <- as_ped(
   data    = list(data1_tte, data1hr),
   cut = seq(0,1000, by =7),
-  formula = Surv(time=EVENT_TIME, event=EVENT) ~ . + concurrent(SLD, CREAT,ALP, ALT, AST, WBC, tz_var = "TIME"), 
+  formula = Surv(time=EVENT_TIME, event=EVENT) ~ . + concurrent(SLD, CREAT,ALP, ALT, AST, NEUT, WBC, tz_var = "TIME"), 
   id      = "USUBJID")
 
-head(ped_data1)
 
-summary(ped_data1$ALP)
-summary(ped_data1$ALT)
-summary(ped_data1$AST)
-summary(ped_data1$CREAT)
-summary(ped_data1$SLD)
-summary(ped_data1$WBC)
 ##############
 
 
@@ -126,159 +106,123 @@ for (i in c(1:nrow(ped_data1upd))) {
   if (is.na(ped_data1upd$CREAT[i])) {
     ped_data1upd$CREAT[i] <- ped_data1upd$CREATav[i]
   }
+  if (is.na(ped_data1upd$NEUT[i])) {
+    ped_data1upd$NEUT[i] <- ped_data1upd$NEUTav[i]
+  }
 }
-pam_strata1 <- gam(ped_status ~ s(tend) + WHOSTATN + SMKSTAT + ALP + SLD + ALT + s(CREAT),
+pam_strata1 <- gam(ped_status ~ s(tend) + WHOSTATN + SMKSTAT + s(SLD) + WBC + s(LDH) + AST + s(CREAT) + s(ALT),
                    data = ped_data1upd,
                    family = poisson(), offset = offset, 
                    method = 'REML')
-
 summary(pam_strata1)
 AIC(pam_strata1)
 
-tidy_smooth(pam_strata1) %>%
-  ggplot(aes(x = x, y = fit)) +
-  geom_stepribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.3) +
-  geom_step() + geom_hline(yintercept = 0, lty = 2) +
-  facet_wrap(~ylab) +
-  xlab(expression(t)) + ylab(expression(f[p](t) %.% x[p]))
 
-
-SurvFunc_strat_plot <- function(ped_data,  pam_model, strata_name,
-                                 strata_type = "cat", timecat = 500, prob_range= c(0.05, 0.95),
-                                legend_title, legend_names){
-  ped_data_IDs <- unique(ped_data$USUBJID)
-  print(length(ped_data_IDs))
-  if (strata_type == "cont"){
-    BMmedian <- median(ped_data[,strata_name])
-    strata_name_cat <- paste0(strata_name,"_cat")
-    ped_data[,strata_name_cat] <- 0
-    ped_data[,strata_name_cat] <- ifelse(ped_data[,strata_name] < BMmedian, 1, 2)
-  }
-  else{
-    strata_name_cat <- strata_name
-  }
-  
-  surf_sum_df <- data.frame()
-  for (i in c(1:length(ped_data_IDs))){
-     ped_data_i <- ped_data[ped_data$USUBJID==ped_data_IDs[i],]
-     if (nrow(ped_data_i) > 0) {
-         ped_data_i$intlen <- ped_data_i$tend - ped_data_i$tstart
-         ped_df <- ped_data_i  %>%  add_surv_prob(pam_model) 
-         surf_sum_df <- rbind(surf_sum_df, ped_df[,c("USUBJID","tend","surv_prob", strata_name_cat )] )
-     }
-  }
-  surf_sum_df <- surf_sum_df[surf_sum_df$tend <= timecat ,]
-  names(surf_sum_df)[4] <- "STRATA"
-  
-  surf_PI <- surf_sum_df %>% group_by(tend, STRATA) %>%
-      summarise(surv_median = median(surv_prob, na.rm = T), 
-                surv_lower = quantile(surv_prob, probs=prob_range[1], na.rm = T),
-                surv_upper = quantile(surv_prob, probs=prob_range[2], na.rm = T))
-  
-  p1 <- ggplot(data=surf_PI, aes(x = tend, y = surv_median, ymax = surv_lower, ymin = surv_upper, group = as.factor(STRATA))) + 
-    geom_line(aes(col=as.factor(STRATA)),size=2) + scale_color_discrete(name = legend_title, labels = legend_names) + 
-    geom_ribbon(aes(fill=as.factor(STRATA)),alpha = 0.2)  + scale_fill_discrete(guide="none") +
-    ylab(expression(hat(S)(t))) + xlab(paste0(expression(t),", days")) 
-    
-  return(p1)
-}
-
-
-survF_plot <- SurvFunc_strat_plot(ped_data=ped_data1upd, pam_model=pam_strata1,strata_name="SMKSTAT",
-                                  prob_range= c(0.10, 0.90), legend_title = 'Smoking Status',
-                                  legend_names= c('Never Smoker', 'Former Smoker', 'Habital Smoker'))
-
-ggsave(survF_plot, file =  "Results/survf_predDistr_SMKSTAT.png", width = 5, height = 4)
-
-survF_plot <- SurvFunc_strat_plot(ped_data=ped_data1upd, pam_model=pam_strata1,strata_name="WHOSTATN",
-                                  timecat =500, prob_range= c(0.10, 0.90), 
-                                  legend_title = 'Performance Status',legend_names= c(0,1,2))
-ggsave(survF_plot, file =  "Results/survf_predDistr_WHOSTATN.png", width = 5, height = 4)
-
-survF_plot <- SurvFunc_strat_plot(ped_data=ped_data1upd, pam_model=pam_strata1,strata_name="SLDav",strata_type = "cont",
-                                   timecat =500, prob_range= c(0.10, 0.90), 
-                                  legend_title = 'Tumor Size',legend_names= c('< population average', '> population average' ))
-ggsave(survF_plot, file =  "Results/survf_predDistr_SLDav.png", width = 5, height = 4)
-
-
-survF_plot <- SurvFunc_strat_plot(ped_data=ped_data1upd, pam_model=pam_strata1, strata_name="ALPav",strata_type = "cont",
-                                   timecat =500, prob_range= c(0.10, 0.90), legend_title = 'Average ALP level',legend_names= c('< population average', '> population average' ))
-ggsave(survF_plot, file =  "Results/survf_predDistr_ALPav.png", width = 5, height = 4)
-
-survF_plot <- SurvFunc_strat_plot(ped_data=ped_data1upd, pam_model=pam_strata1, strata_name="CREATmax",strata_type = "cont",
-                                   timecat =500, prob_range= c(0.10, 0.90), legend_title = 'Max CREAT level',legend_names= c('< population average', '> population average' ))
-ggsave(survF_plot, file =  "Results/survf_predDistr_CREATmax.png", width =5, height = 4)
 ##############################
+set.seed(1)
 n_train   <- 300
 train_idx <- sample(data1_tte$USUBJID, n_train)
-# train_ped <- ped_data1upd[ped_data1upd$USUBJID %in% train_idx, ]
-# test_ped <- ped_data1upd[!(ped_data1upd$USUBJID %in% train_idx), ]
-train_ped <- as_ped(
-  data    = list(data1_tte[data1_tte$USUBJID %in% train_idx, ], data1hr[data1hr$USUBJID %in% train_idx, ]),
-  formula = Surv(EVENT_TIME, EVENT) ~ . + concurrent(SLD, CREAT, ALP, ALT, tz_var = "TIME"),
-  id      = "USUBJID",
-  cut = seq(0, 1000, 200))
-test_ped <- as_ped(
-  data    = list(data1_tte[!(data1_tte$USUBJID %in% train_idx), ], data1hr[!(data1hr$USUBJID %in% train_idx), ]),
-  formula = Surv(EVENT_TIME, EVENT) ~ . + concurrent(SLD, CREAT, ALP, ALT, tz_var = "TIME"),
-  id      = "USUBJID",
-  cut = seq(0, 1000, 200))
-# pam1 <- gam(
-#   formula = ped_status~s(tend) + WHOSTATN + SMKSTAT + ALP + ALT + SLD + s(CREAT),
-#   data = train_ped)
-# pam2 <- pamm(
-#   formula = ped_status ~ s(tend) + SMKSTAT + WHOSTATN,
-#   data = train_ped)
-pam1 <- gam(ped_status ~ s(tend) + SMKSTAT + WHOSTATN,
-                   data = train_ped,
-                   family = poisson(), offset = offset, 
-                   method = 'REML')
-pam2 <- gam(ped_status ~ s(tend) + WHOSTATN + SMKSTAT + ALP + ALT + SLD + s(CREAT),
-                   data = train_ped,
-                   family = poisson(), offset = offset, 
-                   method = 'REML')
+train_ped <- ped_data1upd[ped_data1upd$USUBJID %in% train_idx, ]
+
+d1 <- ped_data1upd[ped_data1upd$tend == max(ped_data1upd$tend),]
+ped_long <-  ped_data1upd[ped_data1upd$USUBJID == d1[1,"USUBJID"],]
+ped_long[,7:19] <- NA
+ped_data1_ids <- ped_data1upd[!duplicated(ped_data1upd$USUBJID),]
+ped_data1_long <- data.frame()
+for (i in 1:nrow(ped_data1_ids)){
+  idi <-  ped_data1_ids[i,"USUBJID"]
+  pdati <-  ped_data1upd[ped_data1upd$USUBJID == idi,]
+  if (max(pdati$tend) < max(ped_long$tend)){
+    pdati_upd <- ped_long[ped_long$tend > max(pdati$tend),]
+    pdati_upd$USUBJID <- idi
+    pdati_upd$ped_status <- pdati$ped_status[pdati$tend == max(pdati$tend)]
+    
+    pdati_long <- rbind(pdati, pdati_upd)
+    pdatilong <- na.locf(na.locf(pdati_long),fromLast=TRUE)
+    
+  }
+  else{
+    pdatilong <- pdati
+  }
+  ped_data1_long <- rbind(ped_data1_long, pdatilong)
+}
+
+test_ped <- ped_data1_long[!(ped_data1_long$USUBJID %in% train_idx),]
+pam1 <- gam(ped_status ~ log(tend) + SMKSTAT + WHOSTATN,
+            data = train_ped,
+            family = poisson(), offset = offset, 
+            method = 'REML')
+pam2 <- gam(ped_status ~ log(tend) + SMKSTAT + WHOSTATN + ALP,
+            data = train_ped,
+            family = poisson(), offset = offset, 
+            method = 'REML')
+pam3 <- gam(ped_status ~ log(tend) + SMKSTAT + WHOSTATN + ALP + SLD,
+            data = train_ped,
+            family = poisson(), offset = offset, 
+            method = 'REML')
+pam4 <- gam(ped_status ~ log(tend) + SMKSTAT + WHOSTATN + ALP + ALT + SLD,
+            data = train_ped,
+            family = poisson(), offset = offset, 
+            method = 'REML')
+pam5 <- gam(ped_status ~ log(tend) + SMKSTAT + WHOSTATN+ ALP + ALT + SLD + s(CREAT),
+            data = train_ped,
+            family = poisson(), offset = offset, 
+            method = 'REML')
 test_ped$intlen <- test_ped$tend - test_ped$tstart
-# time_points <- test_ped$tend[test_ped$ped_status == 1]
-time_point <- 200
-test_ped <- test_ped %>% add_hazard(pam1, overwrite = T)
-test_ped_timepoint <- test_ped[test_ped$tend < time_point,]
-for_auc <-  test_ped_timepoint
-for_auc$predicts <- for_auc$hazard
-for_auc$status <- for_auc$ped_status
+test_ped_new1 <- predict_surv(test_ped, pam1)
+test_ped_new2 <- predict_surv(test_ped, pam2)
+test_ped_new3 <- predict_surv(test_ped, pam3)
+test_ped_new4 <- predict_surv(test_ped, pam4)
+test_ped_new5 <- predict_surv(test_ped, pam5)
+AUCs <- c()
+times <- c(100, 200, 300, 400, 500, 600, 700, 800)
+models <- c('hazard~s(tend) + SMKSTAT + WHOSTATN\n',
+            'hazard~s(tend) + SMKSTAT + WHOSTATN \n+ ALT',
+            'hazard~s(tend) + SMKSTAT + WHOSTATN +\n ALT + SLD',
+            'hazard~s(tend) + SMKSTAT + WHOSTATN +\n ALT + SLD + ALP',
+            'hazard~s(tend) + SMKSTAT + WHOSTATN +\n ALT + SLD + ALP + s(CREAT)'
+)
+colors <- hue_pal()(5)
+i_models <- c(1:5)
+for (timepoint in times){
+  mainLab <- sprintf("Time %d", timepoint)
+  filename <- paste0('Results/ROC_curves/INTEREST/INTEREST_cv_ZODIAC', timepoint, length(i_models), '.png')
+  png(file=filename)
+  plot(x = c(0, 1), y = c(0, 1), type = 'n', xlab = '1 - Sensetivity', ylab = 'Specificity', 
+       main=mainLab)
+  j <- 0
+  for (i in i_models) {
+    ds_name <- paste0('test_ped_new', i)
+    AUCs <- c(AUCs, plot_roc(timepoint, get(ds_name), x = 0.6, y = 0.45 - (j - 1) * 0.1, color = colors[i], 
+                             model = models[i]))
+    j <- j + 1
+  }
+  dev.off()
+}
 
-# for_auc <- test_ped_timepoint %>% 
-#   group_by(USUBJID) %>% 
-#   summarize(status = sum(ped_status), 
-#             predicts = max(hazard))
-roc_curve <- roc(for_auc$status, for_auc$predicts, auc.polygon=TRUE)
+ROC_AUCs <- data.frame(AUC = AUCs, Time = rep(times, each = length(i_models)), 
+                       models = rep(models[i_models], length(times)))
+ROC_AUCs$models <- as.factor(ROC_AUCs$models)
+ggplot(data =ROC_AUCs) + geom_line(aes(x = Time, y = AUC,color = models), size = 1) +theme_bw()
+ggsave('Results/ROC_curves/INTEREST/all_in_time_INTEREST_cv_ZODIAC.png')
 
 
-test_ped <- test_ped %>% add_hazard(pam2, overwrite = T)
-test_ped_timepoint <-  test_ped[test_ped$tend < time_point,]
-for_auc <-  test_ped_timepoint
-for_auc$predicts <- for_auc$hazard
-for_auc$status <- for_auc$ped_status
+BS_t_sum <- c()
+for (timepoint in times){  
+  for (i in i_models) {
+    ds_name <- paste0('test_ped_new', i)
+    BS_t_sum <- c(BS_t_sum, calc_BS(timepoint, get(ds_name)))
+  }
+}
+BS_ds <- data.frame(BS = BS_t_sum, Time = rep(times, each = length(i_models)), 
+                    models = rep(models[i_models], length(times)))
+p_bs <- ggplot(BS_ds, aes(Time, BS, col=models)) +  geom_line()+
+  ggtitle("BS dynamics")
 
-# for_auc <- test_ped_timepoint %>%
-#   group_by(USUBJID) %>%
-#   summarize(status = sum(ped_status),
-#             predicts = max(hazard, na.rm = T))
-roc_curve1 <- roc(for_auc$status, for_auc$predicts, auc.polygon=TRUE)
-plot(roc_curve)
-plot(roc_curve1)
-for_plotting <- data.frame(Model = 'Base Model',
-                           Sensitivity = roc_curve[["sensitivities"]], 
-                           Specificity = roc_curve[["specificities"]])
-for_plotting1 <- data.frame(Model = 'Best Model',
-                           Sensitivity = roc_curve1[["sensitivities"]], 
-                           Specificity = roc_curve1[["specificities"]])
-for_plotting <- rbind(for_plotting, for_plotting1)
-for_plotting1 <- data.frame(Model = 'Random Classifier',
-                            Sensitivity = c(1, 0), 
-                            Specificity = c(0, 1))
-for_plotting <- rbind(for_plotting, for_plotting1)
-ggplot(aes(x=Specificity, y = Sensitivity, color = Model), data = for_plotting) + geom_line()
-ggsave('Results/ROC_all.png')
+p_bs
+ggsave(p_bs, file =  "Results/BS/INTEREST_cv_ZODIAC_BS_time.png", width = 6, height = 4)
+
+
 merged <- merge(data1_tte[, c(1:9)], data1hr, by = c('USUBJID', 'LINE', 'STUDY'), all =  F)
 merged <- merge(merged, BM_by_id, by = 'USUBJID')
 
@@ -296,13 +240,38 @@ for (i in c(1:nrow(merged))) {
   if (is.na(merged$CREAT[i])) {
     merged$CREAT[i] <- merged$CREATav[i]
   }
+  if (is.na(merged$NEUT[i])) {
+    merged$NEUT[i] <- merged$NEUTav[i]
+  }
 }
 colnames(merged)[1] <- 'id'
+pamm1 <- pamm(ped_status ~ log(tend) + SMKSTAT + WHOSTATN,
+             data = train_ped,
+             family = poisson(), offset = offset, 
+             method = 'REML')
+pam2 <- pamm(ped_status ~ log(tend) + SMKSTAT + WHOSTATN+ ALP,
+             data = train_ped,
+             family = poisson(), offset = offset, 
+             method = 'REML')
+pam3 <- pamm(ped_status ~ log(tend) + SMKSTAT + WHOSTATN+ ALP + ALT,
+             data = train_ped,
+             family = poisson(), offset = offset, 
+             method = 'REML')
+pam4 <- pamm(ped_status ~ log(tend) + SMKSTAT + WHOSTATN+ ALP + ALT + SLD,
+             data = train_ped,
+             family = poisson(), offset = offset, 
+             method = 'REML')
+pam5 <- pamm(ped_status ~ log(tend) + SMKSTAT + WHOSTATN+ ALP + ALT + SLD + s(CREAT),
+             data = train_ped,
+             family = poisson(), offset = offset, 
+             method = 'REML')
+
+
 pec <- pec(
-  list(pam1 = pam1, pam2 = pam2),
+  list(pam1 = pam1),
   Surv(EVENT_TIME, EVENT) ~ 1, # formula for IPCW
-  data = merged[(merged$id %in% train_idx), ],
-  times = seq(.01, 400, by = 10),
+  data = merged[!(merged$id %in% train_idx), ],
+  times = seq(.1, 20, by = 10),
   start = .01,
   exact = FALSE,
   reference = T,
@@ -311,6 +280,11 @@ pec <- pec(
 plot(pec)
 ggsave('Results/PEC.png')
 
+ped_data_long_INTEREST <- ped_data1_long
+ped_data1_INTEREST <- ped_data1upd
+# write.csv(merged_INTEREST, 'DerivedData/merged_INTEREST.csv')
+write.csv(ped_data_long_INTEREST, 'DerivedData/ped_long_INTEREST.csv')
+write.csv(ped_data1_INTEREST, 'DerivedData/ped_INTEREST.csv')
 
 unique_measurments <- ped_data1upd %>% group_by(USUBJID) %>% summarize(SLDuni = length(unique(SLD)), 
                                               ALTuni = length(unique(ALT)),
