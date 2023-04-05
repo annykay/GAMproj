@@ -3,7 +3,9 @@ packages = c('readxl', 'ggplot2', 'ggpubr',
              'corrplot', 'tidyr', 'splitstackshape',
              'mgcv', 'writexl', 'gratia',
              'grid', 'viridis', 'pammtools',
-             'pec', 'zoo')
+             'pec', 'zoo', 'RColorBrewer',
+             'dplyr', 'survival', 'purrr',
+             'scales')
 
 package.check <- lapply(
   packages,
